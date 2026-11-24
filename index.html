@@ -558,6 +558,9 @@
         </div>
       </div>
       <form id="quoteForm" novalidate>
+        <input type="hidden" name="access_key" value="e87fd45e-d0ad-4983-970d-0513d98fae95">
+        <input type="hidden" name="subject" value="Nuova richiesta preventivo dal sito Ciak FPV">
+        <input type="hidden" name="from_name" value="Ciak FPV &mdash; sito">
         <input type="text" name="azienda_sito" class="hp" tabindex="-1" autocomplete="off">
         <div class="row2">
           <label for="f-nome">Nome<input id="f-nome" name="nome" type="text" required placeholder="Il tuo nome"><span class="field-err" data-err-for="f-nome"></span></label>
@@ -715,10 +718,7 @@
     items.forEach(function(it){ it.classList.add('in'); });
   }
 
-  // form: validazione minima + messaggio di conferma.
-  // NOTA PER IL DEPLOY REALE: questo form non ha ancora un backend collegato.
-  // Per farlo funzionare davvero, collega "action" a un servizio come Formspree
-  // o Web3Forms, oppure uno script lato server sull'hosting di register.it.
+  // form: validazione + invio reale tramite Web3Forms (le richieste arrivano via email).
   var form = document.getElementById('quoteForm');
   var msg = document.getElementById('formMsg');
   if (form){
@@ -782,11 +782,34 @@
         return;
       }
 
+      var submitBtn = form.querySelector('button[type="submit"]');
       msg.classList.remove('err');
-      msg.textContent = 'Richiesta pronta: ti risponderò al più presto.';
+      msg.textContent = 'Invio in corso...';
       msg.classList.add('show');
-      form.reset();
-      REQUIRED.forEach(function(f){ setFieldError(f.id, ''); });
+      if (submitBtn) submitBtn.disabled = true;
+
+      fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: {'Accept': 'application/json'},
+        body: new FormData(form)
+      })
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          if (data && data.success){
+            msg.textContent = 'Richiesta inviata: ti risponderò al più presto.';
+            form.reset();
+            REQUIRED.forEach(function(f){ setFieldError(f.id, ''); });
+          } else {
+            throw new Error((data && data.message) || 'Invio non riuscito');
+          }
+        })
+        .catch(function(){
+          msg.classList.add('err');
+          msg.textContent = 'Invio non riuscito. Riprova, oppure scrivimi su Instagram (@ciak.fpv).';
+        })
+        .finally(function(){
+          if (submitBtn) submitBtn.disabled = false;
+        });
     });
   }
 })();
